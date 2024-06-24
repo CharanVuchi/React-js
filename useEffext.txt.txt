@@ -1,0 +1,1149 @@
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { Formik, ErrorMessage } from "formik";
+import * as Yup from "yup";
+import { OnboadingBg, SecondaryLogo, InfoIcon } from "../../config/imageSrc";
+import {
+  authUserGetAction,
+  FileUploadAction,
+  authOnboardingAction,
+  fetchLocationByPincode, 
+} from "../../redux/action/Auth/auth";
+
+import "../../utils/variable.scss";
+
+import {
+  TextInput,
+  PhoneNumber,
+  Button,
+  DragFile,
+  Selectmenu,
+  Checkbox,
+  Datepicker,
+  AvatarImage,
+} from "../../components";
+import "./style.scss";
+
+const schema = Yup.object().shape({
+  email: Yup.string()
+    .required("Email is a required field")
+    .email("Invalid email format"),
+  business_legal_name: Yup.string().trim().required("Bussiness is required"),
+  business_trade_name: Yup.string()
+    .trim()
+    .required("Bussiness trade is required"),
+  number: Yup.string().trim().required("Phone number is required"),
+  company_type: Yup.string().trim().required("company type is required"),
+  address1: Yup.string().trim().required("address1 is required"),
+  country: Yup.string().trim().required("country is required"),
+  city: Yup.string().trim().required("city is required"),
+  state_province_region: Yup.string().trim().required("state is required"),
+  postal_code: Yup.string().trim().required("postal code is required"),
+  business_legal_info: Yup.array().of(
+    Yup.object().shape({
+      type: Yup.string().required("Type is required"),
+      value: Yup.string().required("Value is required"),
+      document: Yup.string().required("Document is required"),
+      expiry: Yup.date().required("Expiry date is required"),
+    })
+  ),
+  // account
+  accountName: Yup.string().trim().required("Account name is required"),
+  accountNumber: Yup.string().trim().required("Account number is required"),
+  accountType: Yup.string().trim().required("Account type is required"),
+  ifsc: Yup.string().trim().required("IFSC Code is required"),
+  bank_name: Yup.string().trim().required("Bank Name is required"),
+  branch_name: Yup.string().trim().required("Branch Name is required"),
+  // Contact person
+  first_name: Yup.string().trim().required(" Name is required"),
+  // last_name: Yup.string().trim().required("Last Name is required"),
+  contactNumber: Yup.string().trim().required("Phone Number is required"),
+  contactemail: Yup.string().trim().required("Email Address is required"),
+  designation: Yup.string().trim().required("designation is required"),
+  dob: Yup.string().trim().required("Date of Birth is required"),
+  // identityProof: Yup.string().trim().required("Identity Proof  is required"),
+  identityNumber: Yup.string()
+    .trim()
+    .matches(/^\d{4}?\d{4}?\d{4}$/, 'Invalid Aadhar Number format')
+    .required('Aadhar Number is required'),
+  // addressProof: Yup.string().trim().required("Address Proof is required"),
+  // addressNumber: Yup.string().trim().required("Identity Number is required"),
+  // addressImage: Yup.string().trim().required("Identity Number is required"),
+  // identityImage: Yup.string().trim().required("Identity Proof is required"),
+  addressdetailsAddress1: Yup.string()
+    .trim()
+    .required("Address Line 1 is required"),
+  addressdetailsCountry: Yup.string().trim().required("Country is required"),
+  addressdetailsState_province_region: Yup.string()
+    .trim()
+    .required("State is required"),
+  addressdetailsPostal_code: Yup.string()
+    .trim()
+    .required("Pincode is required"),
+  addressdetailsCity: Yup.string().trim().required("City is required"),
+  authorized_signature: Yup.string()
+    .trim()
+    .required("Authorized Signature is required"),
+});
+
+const OnBoarding = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const userData = useSelector((state) => state?.user?.userData);
+  const [IsFSSAI, setFSSAI] = useState(false);
+  const [isFile, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let userID = localStorage.getItem("uid");
+    dispatch(authUserGetAction(userID));
+    console.log("get data from get action",authUserGetAction(userID))
+  }, []);
+
+  
+  return (
+    <div
+      className="loginBg"
+      style={{
+        backgroundImage: `url(${OnboadingBg})`,
+        minHeight: "100vh",
+        backgroundSize: "cover",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <div className="onboardWrap mw-[1200px]">
+        <div className="loginWrap-content">
+          <div className="flex pb-[70px] align-center justify-center">
+            <img className="" src={SecondaryLogo} alt="" />
+          </div>
+          <h1 className="text-[#202122] text-[28px] font-[600] pb-3">
+            Merchant Onboarding
+          </h1>
+          <h2 className="text-[#202122] text-[24px] font-[500] pb-3">
+            Basic Details
+          </h2>
+          <Formik
+            enableReinitialize={true}
+            validationSchema={schema}
+            initialValues={{
+              logo: "",
+              business_legal_name: userData?.business_legal_name
+                ? userData?.business_legal_name
+                : "",
+              business_trade_name: "",
+              country_code: userData?.user?.phone_number?.country_code
+                ? userData?.user?.phone_number?.country_code
+                : "",
+              number: userData?.user?.phone_number?.number
+                ? userData?.user?.phone_number?.number
+                : "",
+              email: userData?.user?.email ? userData?.user?.email : "",
+              company_type: "",
+              address1: "",
+              address2: "",
+              city: "",
+              postal_code: "",
+              state_province_region: "",
+              country: "",
+              // Business Legal Documents
+              business_legal_info: [
+                {
+                  type: "gst",
+                  value: "",
+                  document: "",
+                  expiry: "2024-10-01",
+                  label: "GST Number*",
+                },
+                {
+                  type: "pan",
+                  value: "",
+                  document: "",
+                  expiry: "2024-10-01",
+                  label: "PAN Number*",
+                },
+                // {
+                //   type: "brn",
+                //   value: "",
+                //   document: "",
+                //   expiry: "2024-10-01",
+                //   label: 'Business Registration Number',
+                // },
+                // {
+                //   type: "tin",
+                //   value: "",
+                //   document: "",
+                //   expiry: "2024-10-01",
+                //   label: 'TIN Number',
+                // },
+                // {
+                //     type: "cin",
+                //     value: "",
+                //     document: "",
+                //     expiry: "2024-10-01",
+                //     label: 'CIN Number',
+                //   }
+                // ],
+                // FSSAI_legal_info: [
+                //   {
+                //     type: "fssai",
+                //     value: "",
+                //     document: "",
+                //     expiry: "2024-10-01",
+                //     label: 'FSSAI License',
+                //   },
+              ],
+              // Bank Account Details
+              accountName: "",
+              accountNumber: "",
+              accountType: "",
+              ifsc: "",
+              bank_name: "",
+              branch_name: "",
+              upi_id: "",
+              // Contact Person Details
+              first_name: "",
+              last_name: "",
+              contactCountry_code: "",
+              contactNumber: "",
+              contactemail: "",
+              designation: "",
+              dob: null,
+              // identity
+              identityProof: "",
+              identityNumber: "",
+              identityImage: "",
+              // address
+              addressProof: "",
+              addressNumber: "",
+              addressImage: "",
+              addressdetailsAddress1: "",
+              addressdetailsAddress2: "",
+              addressdetailsCity: "",
+              addressdetailsPostal_code: "",
+              addressdetailsState_province_region: "",
+              addressdetailsCountry: "",
+
+              authorized_signature: "",
+              beneficial_owner: false,
+              legal_representative: false,
+              own_behalf: false,
+            }}
+            onSubmit={(values) => {
+              let dataObject = {
+                phone_number: {
+                  country_code: values.country_code,
+                  number: values.number.toString(),
+                },
+                email: values.email,
+                company_type: values.company_type,
+                business_legal_name: values.business_legal_name,
+                business_trade_name: values.business_trade_name,
+                address: {
+                  address1: values.address1,
+                  address2: values.address2,
+                  city: values.city,
+                  postal_code: values.postal_code,
+                  state_province_region: values.state_province_region,
+                  country: values.country,
+                },
+                business_legal_info: IsFSSAI
+                  ? values.business_legal_info.concat(values.FSSAI_legal_info)
+                  : values.business_legal_info,
+                bank_account_details: {
+                  name: values.accountName,
+                  account_number: values.accountNumber,
+                  account_type: values.accountType,
+                  ifsc: values.ifsc,
+                  bank_name: values.bank_name,
+                  branch_name: values.branch_name,
+                  upi_id: values.upi_id,
+                },
+                contact_person: {
+                  first_name: values.first_name,
+                  last_name: values.last_name,
+                  phone_number: {
+                    country_code: values.contactCountry_code,
+                    number: values.contactNumber,
+                  },
+                  email: values.contactemail,
+                  designation: values.designation,
+                  dob: values.dob,
+                  identity: {
+                    // proof: values.identityProof,
+                    number: values.identityNumber.toString().replace(/[^0-9]/g, '').replace(/(\d{4})/g, '$1-').slice(0, 14),
+                    // image: values.identityImage,
+                  },
+                  
+                  address: {
+                    proof: values.addressProof,
+                    number: values.addressNumber,
+                    image: values.addressImage,
+                    details: {
+                      address1: values.addressdetailsAddress1,
+                      address2: values.addressdetailsAddress2,
+                      city: values.addressdetailsCity,
+                      postal_code: values.addressdetailsPostal_code,
+                      state_province_region:
+                        values.addressdetailsState_province_region,
+                      country: values.addressdetailsCountry,
+                    },
+                  },
+                },
+                authorized_signature: values.authorized_signature,
+                beneficial_owner: values.beneficial_owner,
+                legal_representative: values.legal_representative,
+                own_behalf: values.own_behalf,
+              };
+              setLoading(true);
+              // do something now that the async call has resolved
+              dispatch(
+                authOnboardingAction({
+                  data: dataObject,
+                  id: localStorage.getItem("uid"),
+                })
+              ).then((res) => {
+                if (res.payload.code === 200) {
+                  setLoading(false);
+                  // localStorage.setItem('uid', result?.data?.uid);
+                  navigate("/login");
+                } else {
+                  setError(res?.payload?.error?.description);
+                  setLoading(false);
+                }
+              });
+            }}
+          >
+            {({
+              values,
+              errors,
+              touched,
+              handleChange,
+              handleBlur,
+              setFieldValue,
+              handleSubmit,
+            }) => (
+              <form noValidate onSubmit={handleSubmit}>
+                <AvatarImage
+                  value={profileImage}
+                  setSelectedFile={(el) => {
+                    const file = el.currentTarget.files[0]; // Get the selected file
+                    setProfileImage(file);
+                    dispatch(FileUploadAction({ path: "logo", file })).then(
+                      (res) => {
+                        const result = res.payload.data;
+                        setFieldValue("logo", result[0].key); // Set the updated array back to Formik
+                      }
+                    );
+                  }}
+                />
+                {/* Business Legal Documents */}
+                <div className="grid grid-cols-3 gap-4">
+                  {values.business_legal_info.map((info, index) => (
+                    <div key={index}>
+                      <TextInput
+                        value={info.value}
+                        id="email"
+                        // isFile
+                        // handleFileChange={(el) => {
+                        //   const file = el.target.files[0]; // Get the selected file
+                        //   const { name } = el.target;
+                        //   dispatch(FileUploadAction({ path: 'documents', file })).then(res => {
+                        //     const result = res.payload.data;
+                        //     const updatedInfo = [...values.business_legal_info]; // Create a copy of the array
+                        //     const indexToUpdate = updatedInfo.findIndex(item => item.type === name); // Find the index of the element to update
+                        //     updatedInfo[indexToUpdate] = { ...updatedInfo[indexToUpdate], document: result[0].key }; // Update the 'document' field
+                        //     setFieldValue('business_legal_info', updatedInfo); // Set the updated array back to Formik
+                        //   })
+                        // }}
+                        // fileValue={info.document}
+                        // RemoveFile={() => {
+                        //   const updatedInfo = [...values.business_legal_info]; // Create a copy of the array
+                        //   const indexToUpdate = updatedInfo.findIndex(item => item.type === info.type); // Find the index of the element to update
+                        //   updatedInfo[indexToUpdate] = { ...updatedInfo[indexToUpdate], document: '' }; // Clear the 'document' field
+                        //   setFieldValue('business_legal_info', updatedInfo); // Set the updated array back to Formik
+                        // }}
+                        // uploadLabel={'Upload GST Certificate'}
+                        darkBg
+                        onChange={(el) => {
+                          const { name, value } = el.target;
+                          const updatedInfo = [...values.business_legal_info]; // Create a copy of the array
+                          const indexToUpdate = updatedInfo.findIndex(
+                            (item) => item.type === name
+                          ); // Find the index of the element to update
+                          updatedInfo[indexToUpdate] = {
+                            ...updatedInfo[indexToUpdate],
+                            value,
+                          }; // Update the 'value' field
+                          setFieldValue("business_legal_info", updatedInfo); // Set the updated array back to Formik
+                        }}
+                        onBlur={handleBlur}
+                        error={
+                          errors?.business_legal_info &&
+                          errors?.business_legal_info[index]?.value
+                        }
+                        // fileError={
+                        //   errors?.business_legal_info &&
+                        //   errors?.business_legal_info[index]?.document
+                        // }
+                        type="text"
+                        name={info.type}
+                        label={info.label}
+                        placeholder={"Enter"}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <Checkbox
+                  // handleChange={() => {
+                  //   setFSSAI(!IsFSSAI)
+                  // }}
+                  name={"Does your business have a GST Number?"}
+                />
+                {/* {IsFSSAI &&
+                  <>
+                    {values.FSSAI_legal_info.map((info, index) => (
+                      <div key={index} className='grid grid-cols-3 gap-4'>
+                        <TextInput
+                          value={info.value}
+                          id="email"
+                          isFile
+                          handleFileChange={(el) => {
+                            const { name } = el.target;
+                            const file = el.target.files[0]; // Get the selected file
+                            dispatch(FileUploadAction({ path: 'documents', file })).then(res => {
+                              const result = res.payload.data;
+                              const updatedInfo = [...values.FSSAI_legal_info]; // Create a copy of the array
+                              const indexToUpdate = updatedInfo.findIndex(item => item.type === name); // Find the index of the element to update
+                              updatedInfo[indexToUpdate] = { ...updatedInfo[indexToUpdate], document: result[0].key }; // Update the 'document' field
+                              setFieldValue('FSSAI_legal_info', updatedInfo); // Set the updated array back to Formik
+                            })
+                          }}
+                          fileValue={info.document}
+                          RemoveFile={() => {
+                            const updatedInfo = [...values.FSSAI_legal_info]; // Create a copy of the array
+                            const indexToUpdate = updatedInfo.findIndex(item => item.type === info.type); // Find the index of the element to update
+                            updatedInfo[indexToUpdate] = { ...updatedInfo[indexToUpdate], document: '' }; // Clear the 'document' field
+                            setFieldValue('FSSAI_legal_info', updatedInfo); // Set the updated array back to Formik
+                          }}
+                          uploadLabel={'Upload FSSAI Certificate'}
+                          darkBg
+                          onChange={(el) => {
+                            const { name, value } = el.target;
+                            const updatedInfo = [...values.FSSAI_legal_info]; // Create a copy of the array
+                            const indexToUpdate = updatedInfo.findIndex(item => item.type === name); // Find the index of the element to update
+                            updatedInfo[indexToUpdate] = { ...updatedInfo[indexToUpdate], value }; // Update the 'value' field
+                            setFieldValue('FSSAI_legal_info', updatedInfo); // Set the updated array back to Formik
+                          }}
+                          onBlur={handleBlur}
+                          error={errors.email && touched.email && errors.email}
+                          type="text"
+                          name={info.type}
+                          label={info.label}
+                          placeholder={'Enter'}
+                        />
+                      </div>))}
+                  </>} */}
+
+                {/* Basic Details */}
+                <div className="grid grid-cols-3 gap-4">
+                  <Selectmenu
+                    value={values.company_type}
+                    options={["LLP", "Private Limited"]}
+                    id="company_type"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.company_type &&
+                      touched.company_type &&
+                      errors.company_type
+                    }
+                    name="company_type"
+                    label={"Company Type"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.business_legal_name}
+                    id="business_legal_name"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.business_legal_name &&
+                      touched.business_legal_name &&
+                      errors.business_legal_name
+                    }
+                    type="text"
+                    name="business_legal_name"
+                    label={"Business Legal Name"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.business_trade_name}
+                    id="business_trade_name"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.business_trade_name &&
+                      touched.business_trade_name &&
+                      errors.business_trade_name
+                    }
+                    type="text"
+                    name="business_trade_name"
+                    label={"Business Trade Name"}
+                    placeholder={"Enter"}
+                  />
+                  {/* <PhoneNumber
+                    value={`${values?.country_code?.toString()} ${values?.number?.toString()}`}
+                    id="number"
+                    darkBg
+                    onChange={(value, country, e, formattedValue) => {
+                      var mobile = formattedValue.replace(/^\+[0-9]{1,3}(\s|\-)/, "");
+                      var newdata = mobile.replace(/[^A-Z0-9]+/ig, "");
+                      setFieldValue("country_code", `+${country.dialCode}`);
+                      setFieldValue("number", newdata);
+                    }}
+                    onBlur={handleBlur}
+                    error={errors.email && touched.email && errors.email}
+                    type="text"
+                    name="number"
+                    label={'Phone Number'}
+                    placeholder={'Enter'}
+                  /> */}
+
+                  <PhoneNumber
+                    value={values.number}
+                    id="phone"
+                    darkBg
+                    onChange={(value, country, e, formattedValue) => {
+                      setFieldValue("country_code", `+${country.dialCode}`);
+                      setFieldValue("number", formattedValue);
+                    }}
+                    onBlur={handleBlur}
+                    error={errors.email && touched.email && errors.email}
+                    type="text"
+                    name="number"
+                    label={"Phone Number"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.email}
+                    id="email"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={errors.email && touched.email && errors.email}
+                    type="email"
+                    name="email"
+                    label={"Email Address"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.address1}
+                    id="address1"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.address1 && touched.address1 && errors.address1
+                    }
+                    type="text"
+                    name="address1"
+                    label={"Address Line 1"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.address2}
+                    id="address2"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.address2 && touched.address2 && errors.address2
+                    }
+                    type="text"
+                    name="address2"
+                    label={"Address Line 2"}
+                    placeholder={"Enter"}
+                  />
+                  <Selectmenu
+                    value={values.country}
+                    options={["India"]}
+                    id="country"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={errors.country && touched.country && errors.country}
+                    name="country"
+                    label={"Country"}
+                    placeholder={"Enter"}
+                  />
+                  <Selectmenu
+                    value={values.state_province_region}
+                    options={["Tamil Nadu"]}
+                    id="state_province_region"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.state_province_region &&
+                      touched.state_province_region &&
+                      errors.state_province_region
+                    }
+                    name="state_province_region"
+                    label={"State"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.city}
+                    id="city"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={errors.city && touched.city && errors.city}
+                    type="text"
+                    name="city"
+                    label={'City'}
+                    placeholder={'Enter'}
+                  />
+                  <TextInput
+                    value={values.postal_code}
+                    id="postal_code"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.postal_code &&
+                      touched.postal_code &&
+                      errors.postal_code
+                    }
+                    type="text"
+                    name="postal_code"
+                    label={"Pincode"}
+                    placeholder={"Enter"}
+                  />
+                </div>
+                <Checkbox
+                  // handleChange={() => {
+                  //   setFSSAI(!IsFSSAI)
+                  // }}
+                  name={"Do you sell food and gourmet products"}
+                />
+
+                {/* Bank Account Details */}
+                <>
+                  <h2 className="text-[#202122] text-[24px] font-[500] pb-3">
+                    Bank Account Details
+                  </h2>
+                  <div className="grid grid-cols-3 gap-4">
+                    <TextInput
+                      value={values.accountName}
+                      id="accountName"
+                      darkBg
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={
+                        errors.accountName &&
+                        touched.accountName &&
+                        errors.accountName
+                      }
+                      type="text"
+                      name="accountName"
+                      label={"Account Name"}
+                      placeholder={"Enter"}
+                    />
+                    <TextInput
+                      value={values.accountNumber}
+                      id="accountNumber"
+                      darkBg
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={
+                        errors.accountNumber &&
+                        touched.accountNumber &&
+                        errors.accountNumber
+                      }
+                      type="text"
+                      name="accountNumber"
+                      label={"Account Number"}
+                      placeholder={"Enter"}
+                    />
+                    <Selectmenu
+                      value={values.accountType}
+                      options={["Savings", "Current"]}
+                      id="accountType"
+                      darkBg
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={
+                        errors.accountType &&
+                        touched.accountType &&
+                        errors.accountType
+                      }
+                      type="text"
+                      name="accountType"
+                      label={"Account Type"}
+                      placeholder={"Enter"}
+                    />
+                    <TextInput
+                      value={values.ifsc}
+                      id="ifsc"
+                      darkBg
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={errors.ifsc && touched.ifsc && errors.ifsc}
+                      type="text"
+                      name="ifsc"
+                      label={"IFSC Code"}
+                      placeholder={"Enter"}
+                    />
+                    <TextInput
+                      value={values.bank_name}
+                      id="bank_name"
+                      darkBg
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={
+                        errors.bank_name &&
+                        touched.bank_name &&
+                        errors.bank_name
+                      }
+                      type="text"
+                      name="bank_name"
+                      label={"Bank Name"}
+                      placeholder={"Enter"}
+                    />
+                    <TextInput
+                      value={values.branch_name}
+                      id="branch_name"
+                      darkBg
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={
+                        errors.branch_name &&
+                        touched.branch_name &&
+                        errors.branch_name
+                      }
+                      type="text"
+                      name="branch_name"
+                      label={"Branch Name"}
+                      placeholder={"Enter"}
+                    />
+                    <TextInput
+                      value={values.upi_id}
+                      id="upi_id"
+                      darkBg
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      error={errors.upi_id && touched.upi_id && errors.upi_id}
+                      type="text"
+                      name="upi_id"
+                      label={"UPI ID"}
+                      placeholder={"Enter"}
+                    />
+                  </div>
+                </>
+
+                {/* Contact Person Details */}
+                <h2 className="text-[#202122] text-[24px] font-[500] pb-3">
+                  Contact Person Details
+                </h2>
+                <div className="grid grid-cols-3 gap-4">
+                <TextInput
+                    value={values.identityNumber}
+                    id="identityNumber"
+                    // isFile
+                    handleFileChange={(el) => {
+                      // const file = el.target.files[0]; // Get the selected file
+                    //   dispatch(FileUploadAction({ path: 'documents', file })).then(res => {
+                    //     const result = res.payload.data;
+                    //     setFieldValue('identityImage', result[0].key); // Set the updated array back to Formik
+                    //   })
+                    }}
+                    // fileValue={values.identityImage}
+                    // RemoveFile={() => {
+                    //   setFieldValue('identityImage', '')
+                    // }}
+                    // uploadLabel={'Upload Identity Proof'}
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    // fileError={errors.identityImage && touched.identityImage && errors.identityImage}
+                    error={errors.identityNumber && touched.identityNumber && errors.identityNumber}
+                    type="text"
+                    name="identityNumber"
+                    label={'Aadhar Number'}
+                    placeholder={'Enter'}
+                  />
+
+                  <TextInput
+                    value={values.first_name}
+                    id="first_name"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.first_name &&
+                      touched.first_name &&
+                      errors.first_name
+                    }
+                    type="text"
+                    name="first_name"
+                    label={"Name"}
+                    placeholder={"Enter"}
+                  />
+                  {/* <PhoneNumber
+                    value={`${values?.contactCountry_code?.toString()} ${values?.contactNumber?.toString()}`}
+                    id="phone"
+                    onChange={(value, country, e, formattedValue) => {
+                      var mobile = formattedValue.replace(
+                        /^\+[0-9]{1,3}(\s|\-)/,
+                        ""
+                      );
+                      var newdata = mobile.replace(/[^A-Z0-9]+/gi, "");
+                      setFieldValue(
+                        "contactCountry_code",
+                        `+${country.dialCode}`
+                      );
+                      setFieldValue("contactNumber", formattedValue);
+                    }}
+                    darkBg
+                    onBlur={handleBlur}
+                    error={
+                      errors.contactNumber &&
+                      touched.contactNumber &&
+                      errors.contactNumber
+                    }
+                    type="number"
+                    name="contactNumber"
+                    label={"Phone Number"}
+                    placeholder={"Phone Number"}
+                  /> */}
+
+                  <PhoneNumber
+                    value={values.number}
+                    id="phone"
+                    darkBg
+                    onChange={(value, country, e, formattedValue) => {
+                      setFieldValue("country_code", `+${country.dialCode}`);
+                      setFieldValue("number", formattedValue);
+                    }}
+                    onBlur={handleBlur}
+                    error={
+                      errors.contactNumber &&
+                      touched.contactNumber &&
+                      errors.contactNumber
+                    }
+                    type="number"
+                    name="contactNumber"
+                    label={"Phone Number"}
+                    placeholder={"Phone Number"}
+                  />
+                  <TextInput
+                    value={values.contactemail}
+                    id="contactemail"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.contactemail &&
+                      touched.contactemail &&
+                      errors.contactemail
+                    }
+                    type="email"
+                    name="contactemail"
+                    label={"Email Address"}
+                    placeholder={"Enter"}
+                  />
+                  <Selectmenu
+                    value={values.designation}
+                    options={["CEO", "CTO"]}
+                    id="designation"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.designation &&
+                      touched.designation &&
+                      errors.designation
+                    }
+                    type="text"
+                    name="designation"
+                    label={"Designation"}
+                    placeholder={"Enter"}
+                  />
+                  <Datepicker
+                    darkBg
+                    value={values.dob}
+                    error={errors.dob && touched.dob && errors.dob}
+                    label={"Date of Birth"}
+                    onChange={(date) => {
+                      setFieldValue("dob", date);
+                    }}
+                  />
+                  {/* <Selectmenu
+                    value={values.identityProof}
+                    options={['Aadhar']}
+                    id="identityProof"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={errors.identityProof && touched.identityProof && errors.identityProof}
+                    name="identityProof"
+                    label={'Identity Proof'}
+                    placeholder={'Enter'}
+                  /> */}
+                  {/* <TextInput
+                    value={values.identityNumber}
+                    id="identityNumber"
+                    isFile
+                    handleFileChange={(el) => {
+                      const file = el.target.files[0]; // Get the selected file
+                      dispatch(FileUploadAction({ path: 'documents', file })).then(res => {
+                        const result = res.payload.data;
+                        setFieldValue('identityImage', result[0].key); // Set the updated array back to Formik
+                      })
+                    }}
+                    fileValue={values.identityImage}
+                    RemoveFile={() => {
+                      setFieldValue('identityImage', '')
+                    }}
+                    uploadLabel={'Upload Identity Proof'}
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    fileError={errors.identityImage && touched.identityImage && errors.identityImage}
+                    error={errors.identityNumber && touched.identityNumber && errors.identityNumber}
+                    type="text"
+                    name="identityNumber"
+                    label={'Identity Number'}
+                    placeholder={'Enter'}
+                  />
+                </div>
+                <div className='grid grid-cols-3 gap-4'>
+                  <Selectmenu
+                    value={values.addressProof}
+                    options={['Licence', 'passport']}
+                    id="addressProof"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={errors.addressProof && touched.addressProof && errors.addressProof}
+                    type="addressProof"
+                    name="addressProof"
+                    label={'Address Proof'}
+                    placeholder={'Enter'}
+                  /> */}
+                  {/* <TextInput
+                    value={values.addressNumber}
+                    id="addressNumber"
+                    isFile
+                    handleFileChange={(el) => {
+                      const file = el.target.files[0]; // Get the selected file
+                      dispatch(FileUploadAction({ path: 'documents', file })).then(res => {
+                        const result = res.payload.data;
+                        setFieldValue('addressImage', result[0].key); // Set the updated array back to Formik
+                      })
+                    }}
+                    fileValue={values.addressImage}
+                    RemoveFile={() => {
+                      setFieldValue('addressImage', '')
+                    }}
+                    uploadLabel={'Identity Number'}
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={errors.addressNumber && touched.addressNumber && errors.addressNumber}
+                    fileError={errors.addressImage && touched.addressImage && errors.addressImage}
+                    type="text"
+                    name="addressNumber"
+                    label={'Identity Number'}
+                    placeholder={'Enter'}
+                  /> */}
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <TextInput
+                    value={values.addressdetailsAddress1}
+                    id="addressdetailsAddress1"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.addressdetailsAddress1 &&
+                      touched.addressdetailsAddress1 &&
+                      errors.addressdetailsAddress1
+                    }
+                    type="text"
+                    name="addressdetailsAddress1"
+                    label={"Address Line 1"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.addressdetailsAddress2}
+                    id="addressdetailsAddress2"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.addressdetailsAddress2 &&
+                      touched.addressdetailsAddress2 &&
+                      errors.addressdetailsAddress2
+                    }
+                    type="text"
+                    name="addressdetailsAddress2"
+                    label={"Address Line 2"}
+                    placeholder={"Enter"}
+                  />
+                  <Selectmenu
+                    value={values.addressdetailsCountry}
+                    options={["India"]}
+                    id="addressdetailsCountry"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.addressdetailsCountry &&
+                      touched.addressdetailsCountry &&
+                      errors.addressdetailsCountry
+                    }
+                    name="addressdetailsCountry"
+                    label={"Country"}
+                    placeholder={"Enter"}
+                  />
+                  <Selectmenu
+                    value={values.addressdetailsState_province_region}
+                    options={["Tamil nadu"]}
+                    id="addressdetailsState_province_region"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.addressdetailsState_province_region &&
+                      touched.addressdetailsState_province_region &&
+                      errors.addressdetailsState_province_region
+                    }
+                    name="addressdetailsState_province_region"
+                    label={"State"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.addressdetailsCity}
+                    id="addressdetailsCity"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.addressdetailsCity &&
+                      touched.addressdetailsCity &&
+                      errors.addressdetailsCity
+                    }
+                    type="text"
+                    name="addressdetailsCity"
+                    label={"City"}
+                    placeholder={"Enter"}
+                  />
+                  <TextInput
+                    value={values.addressdetailsPostal_code}
+                    id="addressdetailsPostal_code"
+                    darkBg
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={
+                      errors.addressdetailsPostal_code &&
+                      touched.addressdetailsPostal_code &&
+                      errors.addressdetailsPostal_code
+                    }
+                    type="text"
+                    name="addressdetailsPostal_code"
+                    label={"Pincode"}
+                    placeholder={"Enter"}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <DragFile
+                    value={isFile}
+                    setSelectedFile={(el) => {
+                      const file = el.currentTarget.files[0]; // Get the selected file
+                      setFile(file);
+                      dispatch(
+                        FileUploadAction({ path: "signature", file })
+                      ).then((res) => {
+                        const result = res.payload.data;
+                        setFieldValue("authorized_signature", result[0].key); // Set the updated array back to Formik
+                      });
+                    }}
+                    removeImage={() => {
+                      setFile(null);
+                      setFieldValue("authorized_signature", "");
+                    }}
+                    error={
+                      errors.authorized_signature &&
+                      touched.authorized_signature &&
+                      errors.authorized_signature
+                    }
+                    label={"Authorized Signature"}
+                    darkBg
+                  />
+                </div>
+                <p className="flex text-[#989999]">
+                  <img className="pr-2" src={InfoIcon} alt="InfoIcon" />
+                  White background and use blue/black ink
+                </p>
+                <p className="flex text-[#989999]">
+                  <img className="pr-2" src={InfoIcon} alt="InfoIcon" />
+                  Dimensions 200*80
+                </p>
+                <Checkbox
+                  checked={values.beneficial_owner}
+                  handleChange={(el) => {
+                    setFieldValue("beneficial_owner", el.target.checked);
+                  }}
+                  name={
+                    "Is contact person the beneficial owner of the business"
+                  }
+                />
+                <Checkbox
+                  checked={values.legal_representative}
+                  handleChange={(el) => {
+                    setFieldValue("legal_representative", el.target.checked);
+                  }}
+                  name={
+                    "Is contact person the legal representative of the business"
+                  }
+                />
+                <Checkbox
+                  checked={values.own_behalf}
+                  handleChange={(el) => {
+                    setFieldValue("own_behalf", el.target.checked);
+                  }}
+                  name={
+                    "I confirm on acting on own behalf or behalf of the registered business, and I commit to update the beneficial ownership information whenever a change has been made "
+                  }
+                />
+                {error && (
+                  <p className="text-[#FF0000] text-[12px] pb-[10px]">
+                    {error}
+                  </p>
+                )}
+                <div className="buttonCom flex items-center justify-center">
+                  <Button
+                    isLoading={loading}
+                    onClick={handleSubmit}
+                    style={{ textAlign: "center", marginTop: 30, width: 298 }}
+                    label="Submit"
+                  />
+                </div>
+              </form>
+            )}
+          </Formik>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default OnBoarding;
